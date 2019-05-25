@@ -90,7 +90,6 @@ update msg model =
     InputTime time ->
       let
         timeLength = String.length time
-        _ = Debug.log ("time is " ++ time)
       in
         if timeLength > 6 then  -- "hhmmdd"
           ( model
