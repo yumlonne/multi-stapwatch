@@ -5407,7 +5407,7 @@ var author$project$Main$subscriptions = function (model) {
 		elm$core$Basics$always(author$project$Main$Tick));
 };
 var author$project$Main$defaultStopwatch = function (id) {
-	return {g: id, av: '', B: 0};
+	return {i: id, av: '', B: 0};
 };
 var author$project$Main$updateStopwatchByCond = F3(
 	function (cond, f, model) {
@@ -5457,7 +5457,7 @@ var author$project$Main$update = F2(
 					A3(
 						author$project$Main$updateStopwatchByCond,
 						function (sw) {
-							return _Utils_eq(sw.g, targetStopwatchId);
+							return _Utils_eq(sw.i, targetStopwatchId);
 						},
 						function (sw) {
 							return _Utils_update(
@@ -5488,7 +5488,7 @@ var author$project$Main$update = F2(
 				var nextStopwatches = A2(
 					elm$core$List$filter,
 					function (sw) {
-						return !_Utils_eq(sw.g, stopwatchId);
+						return !_Utils_eq(sw.i, stopwatchId);
 					},
 					model.n);
 				return _Utils_Tuple2(
@@ -5519,7 +5519,7 @@ var author$project$Main$update = F2(
 					A3(
 						author$project$Main$updateStopwatchByCond,
 						function (sw) {
-							return _Utils_eq(sw.g, stopwatchId);
+							return _Utils_eq(sw.i, stopwatchId);
 						},
 						function (sw) {
 							return _Utils_update(
@@ -5534,7 +5534,7 @@ var author$project$Main$update = F2(
 					A3(
 						author$project$Main$updateStopwatchByCond,
 						function (sw) {
-							return _Utils_eq(sw.g, stopwatchId);
+							return _Utils_eq(sw.i, stopwatchId);
 						},
 						function (sw) {
 							return _Utils_update(
@@ -10769,7 +10769,7 @@ var author$project$Main$isWorking = F2(
 		var _n0 = model.u;
 		if (!_n0.$) {
 			var id = _n0.a;
-			return _Utils_eq(stopwatch.g, id);
+			return _Utils_eq(stopwatch.i, id);
 		} else {
 			return false;
 		}
@@ -11892,7 +11892,7 @@ var mdgriffith$elm_ui$Element$Input$textHelper = F3(
 											return _Utils_update(
 												found,
 												{
-													h: A2(elm$core$List$cons, attr, found.h),
+													g: A2(elm$core$List$cons, attr, found.g),
 													ar: elm$core$Maybe$Just(
 														mdgriffith$elm_ui$Internal$Model$isContent(len))
 												});
@@ -11912,7 +11912,7 @@ var mdgriffith$elm_ui$Element$Input$textHelper = F3(
 													return _Utils_update(
 														found,
 														{
-															h: A2(elm$core$List$cons, attr, found.h),
+															g: A2(elm$core$List$cons, attr, found.g),
 															as: elm$core$Maybe$Just(
 																A4(mdgriffith$elm_ui$Element$Input$Padding, t, r, b, l))
 														});
@@ -11930,7 +11930,7 @@ var mdgriffith$elm_ui$Element$Input$textHelper = F3(
 													return _Utils_update(
 														found,
 														{
-															h: found.h,
+															g: found.g,
 															at: elm$core$Maybe$Just(
 																A4(mdgriffith$elm_ui$Element$Input$Padding, t, r, b, l))
 														});
@@ -11946,7 +11946,7 @@ var mdgriffith$elm_ui$Element$Input$textHelper = F3(
 													return _Utils_update(
 														found,
 														{
-															h: A2(elm$core$List$cons, attr, found.h),
+															g: A2(elm$core$List$cons, attr, found.g),
 															au: elm$core$Maybe$Just(y)
 														});
 												} else {
@@ -11962,15 +11962,15 @@ var mdgriffith$elm_ui$Element$Input$textHelper = F3(
 							return _Utils_update(
 								found,
 								{
-									h: A2(elm$core$List$cons, attr, found.h)
+									g: A2(elm$core$List$cons, attr, found.g)
 								});
 						}),
-					{h: _List_Nil, ar: elm$core$Maybe$Nothing, as: elm$core$Maybe$Nothing, at: elm$core$Maybe$Nothing, au: elm$core$Maybe$Nothing},
+					{g: _List_Nil, ar: elm$core$Maybe$Nothing, as: elm$core$Maybe$Nothing, at: elm$core$Maybe$Nothing, au: elm$core$Maybe$Nothing},
 					attributes);
 				var maybePadding = _n3.at;
 				var heightContent = _n3.ar;
 				var maybeSpacing = _n3.au;
-				var adjustedAttributes = _n3.h;
+				var adjustedAttributes = _n3.g;
 				var maybeBorder = _n3.as;
 				var spacing = A2(elm$core$Maybe$withDefault, 5, maybeSpacing);
 				return _Utils_Tuple3(
@@ -12142,7 +12142,7 @@ var author$project$Main$view = function (model) {
 							_List_fromArray(
 								[
 									mdgriffith$elm_ui$Element$centerX,
-									mdgriffith$elm_ui$Element$spacing(40)
+									mdgriffith$elm_ui$Element$spacing(15)
 								]),
 							_List_fromArray(
 								[
@@ -12159,13 +12159,12 @@ var author$project$Main$view = function (model) {
 											_List_Nil,
 											{
 												ab: mdgriffith$elm_ui$Element$Input$labelHidden('msg'),
-												cB: author$project$Main$UpdateName(stopwatch.g),
+												cB: author$project$Main$UpdateName(stopwatch.i),
 												cJ: elm$core$Maybe$Just(
 													A2(
 														mdgriffith$elm_ui$Element$Input$placeholder,
 														_List_Nil,
-														mdgriffith$elm_ui$Element$text(
-															elm$core$String$fromInt(stopwatch.g)))),
+														mdgriffith$elm_ui$Element$text('title'))),
 												c2: stopwatch.av
 											}),
 											A2(
@@ -12178,7 +12177,7 @@ var author$project$Main$view = function (model) {
 											{
 												ab: mdgriffith$elm_ui$Element$text('✖'),
 												aw: elm$core$Maybe$Just(
-													author$project$Main$RemoveStopwatch(stopwatch.g))
+													author$project$Main$RemoveStopwatch(stopwatch.i))
 											})
 										])),
 									A2(
@@ -12219,7 +12218,7 @@ var author$project$Main$view = function (model) {
 													_List_Nil,
 													mdgriffith$elm_ui$Element$text(buttonText)),
 												aw: elm$core$Maybe$Just(
-													author$project$Main$SwitchState(stopwatch.g))
+													author$project$Main$SwitchState(stopwatch.i))
 											}),
 											A2(
 											mdgriffith$elm_ui$Element$Input$button,
@@ -12237,7 +12236,7 @@ var author$project$Main$view = function (model) {
 													_List_Nil,
 													mdgriffith$elm_ui$Element$text('reset')),
 												aw: elm$core$Maybe$Just(
-													author$project$Main$ResetTime(stopwatch.g))
+													author$project$Main$ResetTime(stopwatch.i))
 											})
 										]))
 								]));

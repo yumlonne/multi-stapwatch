@@ -204,12 +204,12 @@ view model =
             buttonText  = if isWorking model stopwatch then "■stop" else "▶start"
             buttonColor = if isWorking model stopwatch then stopBGColor else startBGColor
           in
-            column [ centerX, spacing 40]
+            column [ centerX, spacing 15]
             [ row [ spacing 20 ]  -- title row
               [ Input.text []
                 { onChange = UpdateName stopwatch.id
                 , text = stopwatch.name
-                , placeholder = Just (Input.placeholder [] (text (String.fromInt stopwatch.id)))
+                , placeholder = Just (Input.placeholder [] (text "title"))
                 , label = Input.labelHidden "msg"
                 }
                 ,
