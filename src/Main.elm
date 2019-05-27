@@ -9,6 +9,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import List.Extra exposing (..)
 
 -- MAIN
 
@@ -21,12 +22,39 @@ main = Browser.element
 
 -- MODEL
 
-type alias Model =
-  { name : String
+type alias StopwatchId = Int
+type alias Stopwatch =
+  { id   : StopwatchId
+  , name : String
   , time : Int
-  , isWorking : Bool
-  , inputTime : String
   }
+
+defaultStopwatch : StopwatchId -> Stopwatch
+defaultStopwatch id =
+  { id   = id
+  , name = ""
+  , time = 0
+  }
+
+type alias Model =
+  { stopwatches : List Stopwatch
+  , workingStopwatchId : Maybe StopwatchId
+  , currentStopwatchId : Int
+  }
+
+isWorking : Model -> Stopwatch -> Bool
+isWorking model stopwatch =
+  case model.workingStopwatchId of
+    Just id -> stopwatch.id == id
+    Nothing -> False
+
+updateStopwatchByCond : (Stopwatch -> Bool) -> (Stopwatch -> Stopwatch) -> Model -> Model
+updateStopwatchByCond cond f model =
+  { model | stopwatches = List.map (\sw -> if cond sw then f sw else sw) model.stopwatches }
+
+getStopwatchById : StopwatchId -> Model -> Maybe Stopwatch
+getStopwatchById stopwatchId model =
+  find (\sw -> stopwatchId == sw.id) model.stopwatches
 
 type alias Hour   = Int
 type alias Minute = Int
@@ -34,13 +62,11 @@ type alias Second = Int
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  ( { name = ""
-    , time = 0
-    , isWorking = False
-    , inputTime = ""
+  ( { stopwatches = []
+    , workingStopwatchId = Nothing
+    , currentStopwatchId = 1
     }
-  , Cmd.none
-  )
+  , Cmd.none)
 
 
 -- UPDATE
@@ -48,9 +74,11 @@ init _ =
 type Msg
   = DoNothing
   | Tick
-  | SwitchWatchState
-  | UpdateName String
-  | ResetTime
+  | AddStopwatch
+  | RemoveStopwatch StopwatchId
+  | SwitchState StopwatchId
+  | UpdateName StopwatchId String
+  | ResetTime StopwatchId
   | InputTime String
   | ApplyTime
 
@@ -63,53 +91,75 @@ update msg model =
       )
 
     Tick ->
-      if model.isWorking then
-        ( { model | time = model.time + 1 }
+      let
+        targetStopwatchId = Maybe.withDefault -1 model.workingStopwatchId
+      in
+        ( updateStopwatchByCond (\sw -> sw.id == targetStopwatchId) (\sw -> { sw | time = sw.time + 1 }) model
         , Cmd.none
         )
-      else
-      ( model
+
+    AddStopwatch ->
+      ( { model | stopwatches = (model.stopwatches ++ [ defaultStopwatch model.currentStopwatchId])
+        , currentStopwatchId = model.currentStopwatchId + 1
+        }
+      , Cmd.none
+      )
+    RemoveStopwatch stopwatchId ->
+      let
+        nextWorkingStopwatchId = if (Maybe.withDefault -1 model.workingStopwatchId) == stopwatchId then Nothing else model.workingStopwatchId
+        nextStopwatches = List.filter (\sw -> sw.id /= stopwatchId) model.stopwatches
+      in
+        ( { model | workingStopwatchId = nextWorkingStopwatchId, stopwatches = nextStopwatches }
+        , Cmd.none
+        )
+
+    SwitchState stopwatchId ->
+      let
+        nextWorkingStopwatchId =
+          case model.workingStopwatchId of
+            Just workingStopwatchId ->
+              if stopwatchId == workingStopwatchId then Nothing else Just stopwatchId
+            Nothing ->
+              Just stopwatchId
+      in
+        ( { model | workingStopwatchId = nextWorkingStopwatchId }
+        , Cmd.none )
+
+    UpdateName stopwatchId name ->
+      ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | name = name }) model
       , Cmd.none
       )
 
-    SwitchWatchState ->
-      ( { model | isWorking = not model.isWorking }
-      , Cmd.none
-      )
-
-    UpdateName name ->
-      ( { model | name = name }
-      , Cmd.none
-      )
-
-    ResetTime ->
-      ( { model | time = 0 }
+    ResetTime stopwatchId ->
+      ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | time = 0 }) model
       , Cmd.none
       )
 
     InputTime time ->
-      let
-        timeLength = String.length time
-      in
-        if timeLength > 6 then  -- "hhmmdd"
-          ( model
-          , Cmd.none
-          )
-        else
-          ( { model | inputTime = String.left 6 time }
-          , Cmd.none
-          )
+      --let
+      --  timeLength = String.length time
+      --in
+      --  if timeLength > 6 then  -- "hhmmdd"
+      --    ( model
+      --    , Cmd.none
+      --    )
+      --  else
+      --    ( { model | inputTime = String.left 6 time }
+      --    , Cmd.none
+      --    )
+      ( model, Cmd.none )
 
     ApplyTime ->
-      case strToTime model.inputTime of
-        Just time ->
-          ( { model | time = time }
-          , Cmd.none
-          )
-        Nothing ->
-          ( model
-          , Cmd.none
-          )
+      --case strToTime model.inputTime of
+      --  Just time ->
+      --    ( { model | time = time }
+      --    , Cmd.none
+      --    )
+      --  Nothing ->
+      --    ( model
+      --    , Cmd.none
+      --    )
+      ( model, Cmd.none )
 
 
 
@@ -143,53 +193,60 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  let
-    hour   = to2digit <| String.fromInt (model.time // (60 * 60))
-    minute = to2digit <| String.fromInt (modBy 60 (model.time // 60))
-    second = to2digit <| String.fromInt (modBy 60 model.time)
-    buttonText = if model.isWorking then "■stop" else "▶start"
-    buttonColor = if model.isWorking then stopBGColor else startBGColor
-  in
-    layout [] <|
-      column [ centerX, spacing 40]
-        [ row [ spacing 20 ]  -- title row
-          [ Input.text []
-            { onChange = UpdateName
-            , text = model.name
-            , placeholder = Just (Input.placeholder [] (text "Title"))
-            , label = Input.labelHidden "msg"
+  layout [] <|
+    row [ spacing 30 ]
+      (
+        ( List.map (\stopwatch ->
+          let
+            hour   = to2digit <| String.fromInt (stopwatch.time // (60 * 60))
+            minute = to2digit <| String.fromInt (modBy 60 (stopwatch.time // 60))
+            second = to2digit <| String.fromInt (modBy 60 stopwatch.time)
+            buttonText  = if isWorking model stopwatch then "■stop" else "▶start"
+            buttonColor = if isWorking model stopwatch then stopBGColor else startBGColor
+          in
+            column [ centerX, spacing 40]
+            [ row [ spacing 20 ]  -- title row
+              [ Input.text []
+                { onChange = UpdateName stopwatch.id
+                , text = stopwatch.name
+                , placeholder = Just (Input.placeholder [] (text (String.fromInt stopwatch.id)))
+                , label = Input.labelHidden "msg"
+                }
+                ,
+                Input.button [ Font.color (rgb255 255 0 0) ]
+                { onPress = Just (RemoveStopwatch stopwatch.id)
+                , label = text "✖"
+                }
+              ]
+              ,
+              row [ centerX ]  -- stopwatch row
+              [ centerEL [ Font.size 55 ]
+                (text (hour ++ ":" ++ minute ++ ":" ++ second))
+              ]
+              ,
+              row [ centerX, spacing 10] -- button row
+              [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
+                { onPress = Just (SwitchState stopwatch.id)
+                , label = centerEL [] (text buttonText)
+                }
+                ,
+                Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX])
+                { onPress = Just (ResetTime stopwatch.id)
+                , label = centerEL [] (text "reset")
+                }
+              ]
+            ]
+          ) model.stopwatches
+        )
+        ++
+        [ el []
+          ( Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
+            { onPress = Just AddStopwatch
+            , label = centerEL [] (text "add")
             }
-            ,
-            Input.button [ Font.color (rgb255 255 0 0) ]
-            { onPress = Nothing -- TODO
-            , label = text "✖"
-            }
-          ]
-          ,
-          row [ centerX ]  -- stopwatch row
-          [ centerEL [ Font.size 55 ]
-            (text (hour ++ ":" ++ minute ++ ":" ++ second))
-          ]
-          ,
-          row [ centerX, spacing 10] -- button row
-          [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
-            { onPress = Just SwitchWatchState
-            , label = centerEL [] (text buttonText)
-            }
-            ,
-            Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX])
-            { onPress = Just ResetTime
-            , label = centerEL [] (text "reset")
-            }
-          ]
+          )
         ]
---        [ input [ type_ "", placeholder "title", onInput UpdateName, style "font-size" "100px" ] []
---        , h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]
---        , input [ type_ "text", placeholder "hh:mm:ss", onInput InputTime ] [ text (toTimeFormat model.inputTime) ]
---        , button [ onClick ApplyTime ] [ text "apply" ]
---        , button [ onClick SwitchWatchState ] [ text buttonText ]
---        , button [ onClick ResetTime ] [ text "reset" ]
---        ]
+      )
 
 to2digit : String -> String
 to2digit s = if String.length s >= 2 then s else "0" ++ s
