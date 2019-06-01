@@ -246,7 +246,7 @@ view model =
     workingSecond = Maybe.withDefault 0 << Maybe.map2 timeDiffSecond model.currentTime <| Maybe.map .startTime model.workingState
   in
     layout [] <|
-      row [ spacing 30 ]
+      row [ spacing 30, alignTop ]
         (
           ( List.map (\stopwatch ->
             let
@@ -269,7 +269,7 @@ view model =
                 , label   = centerEL [] (text buttonText)
                 }
             in
-              column [ centerX, spacing 15]
+              column [ centerX, spacing 15, alignTop]
               [ row [ spacing 20 ]  -- title row
                 [ Input.text []
                   { onChange = UpdateName stopwatch.id
@@ -309,7 +309,7 @@ view model =
             ) model.stopwatches
           )
           ++
-          [ el []  -- add button
+          [ el [ alignTop, padding 10 ]  -- add button
             ( Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
               { onPress = Just AddStopwatch
               , label = centerEL [] (text "add")
@@ -346,21 +346,22 @@ centerEL l e = el ([centerX, centerY] ++ l) e
 toTimeString : Time.Posix -> String
 toTimeString posix =
     let
+        timezone = asia__tokyo()
         hour =
             posix
-                |> Time.toHour (asia__tokyo())
+                |> Time.toHour timezone
                 |> String.fromInt
                 |> String.pad 2 '0'
 
         minute =
             posix
-                |> Time.toMinute (asia__tokyo())
+                |> Time.toMinute timezone
                 |> String.fromInt
                 |> String.pad 2 '0'
 
         second =
             posix
-                |> Time.toSecond (asia__tokyo())
+                |> Time.toSecond timezone
                 |> String.fromInt
                 |> String.pad 2 '0'
     in

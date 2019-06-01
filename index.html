@@ -11427,39 +11427,33 @@ var justinmimbs$timezone_data$TimeZone$asia__tokyo = function (_n0) {
 				justinmimbs$timezone_data$TimeZone$Specification$Save(0))));
 };
 var author$project$Main$toTimeString = function (posix) {
+	var timezone = justinmimbs$timezone_data$TimeZone$asia__tokyo(0);
 	var second = A3(
 		elm$core$String$pad,
 		2,
 		'0',
 		elm$core$String$fromInt(
-			A2(
-				elm$time$Time$toSecond,
-				justinmimbs$timezone_data$TimeZone$asia__tokyo(0),
-				posix)));
+			A2(elm$time$Time$toSecond, timezone, posix)));
 	var minute = A3(
 		elm$core$String$pad,
 		2,
 		'0',
 		elm$core$String$fromInt(
-			A2(
-				elm$time$Time$toMinute,
-				justinmimbs$timezone_data$TimeZone$asia__tokyo(0),
-				posix)));
+			A2(elm$time$Time$toMinute, timezone, posix)));
 	var hour = A3(
 		elm$core$String$pad,
 		2,
 		'0',
 		elm$core$String$fromInt(
-			A2(
-				elm$time$Time$toHour,
-				justinmimbs$timezone_data$TimeZone$asia__tokyo(0),
-				posix)));
+			A2(elm$time$Time$toHour, timezone, posix)));
 	return A2(
 		elm$core$String$join,
 		':',
 		_List_fromArray(
 			[hour, minute, second]));
 };
+var mdgriffith$elm_ui$Internal$Model$Top = 0;
+var mdgriffith$elm_ui$Element$alignTop = mdgriffith$elm_ui$Internal$Model$AlignY(0);
 var mdgriffith$elm_ui$Internal$Model$AsColumn = 1;
 var mdgriffith$elm_ui$Internal$Model$asColumn = 1;
 var mdgriffith$elm_ui$Internal$Model$Attr = function (a) {
@@ -11760,6 +11754,23 @@ var mdgriffith$elm_ui$Element$layoutWith = F3(
 	});
 var mdgriffith$elm_ui$Element$layout = mdgriffith$elm_ui$Element$layoutWith(
 	{bu: _List_Nil});
+var mdgriffith$elm_ui$Internal$Flag$padding = mdgriffith$elm_ui$Internal$Flag$flag(2);
+var mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
+	function (a, b, c, d, e) {
+		return {$: 7, a: a, b: b, c: c, d: d, e: e};
+	});
+var mdgriffith$elm_ui$Element$padding = function (x) {
+	return A2(
+		mdgriffith$elm_ui$Internal$Model$StyleClass,
+		mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			'p-' + elm$core$String$fromInt(x),
+			x,
+			x,
+			x,
+			x));
+};
 var mdgriffith$elm_ui$Internal$Model$AsRow = 0;
 var mdgriffith$elm_ui$Internal$Model$asRow = 0;
 var mdgriffith$elm_ui$Element$row = F2(
@@ -12054,11 +12065,6 @@ var mdgriffith$elm_ui$Internal$Model$Nearby = F2(
 var mdgriffith$elm_ui$Element$inFront = function (element) {
 	return A2(mdgriffith$elm_ui$Internal$Model$Nearby, 4, element);
 };
-var mdgriffith$elm_ui$Internal$Flag$padding = mdgriffith$elm_ui$Internal$Flag$flag(2);
-var mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
-	function (a, b, c, d, e) {
-		return {$: 7, a: a, b: b, c: c, d: d, e: e};
-	});
 var mdgriffith$elm_ui$Internal$Model$paddingName = F4(
 	function (top, right, bottom, left) {
 		return 'pad-' + (elm$core$String$fromInt(top) + ('-' + (elm$core$String$fromInt(right) + ('-' + (elm$core$String$fromInt(bottom) + ('-' + elm$core$String$fromInt(left)))))));
@@ -12795,7 +12801,8 @@ var author$project$Main$view = function (model) {
 			mdgriffith$elm_ui$Element$row,
 			_List_fromArray(
 				[
-					mdgriffith$elm_ui$Element$spacing(30)
+					mdgriffith$elm_ui$Element$spacing(30),
+					mdgriffith$elm_ui$Element$alignTop
 				]),
 			_Utils_ap(
 				A2(
@@ -12828,7 +12835,8 @@ var author$project$Main$view = function (model) {
 							_List_fromArray(
 								[
 									mdgriffith$elm_ui$Element$centerX,
-									mdgriffith$elm_ui$Element$spacing(15)
+									mdgriffith$elm_ui$Element$spacing(15),
+									mdgriffith$elm_ui$Element$alignTop
 								]),
 							_List_fromArray(
 								[
@@ -12939,7 +12947,11 @@ var author$project$Main$view = function (model) {
 					[
 						A2(
 						mdgriffith$elm_ui$Element$el,
-						_List_Nil,
+						_List_fromArray(
+							[
+								mdgriffith$elm_ui$Element$alignTop,
+								mdgriffith$elm_ui$Element$padding(10)
+							]),
 						A2(
 							mdgriffith$elm_ui$Element$Input$button,
 							_Utils_ap(
