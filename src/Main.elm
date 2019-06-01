@@ -26,26 +26,40 @@ type alias StopwatchId = Int
 type alias Stopwatch =
   { id   : StopwatchId
   , name : String
-  , time : Int
+  , logs : List LogRecord
   }
+
+type alias LogRecord =
+  { startTime : Time.Posix
+  , endTime : Time.Posix
+  , elapsedSecond : Int
+  }
+
+getElapsedSecond : Stopwatch -> Int
+getElapsedSecond sw = List.sum <| List.map .elapsedSecond sw.logs
 
 defaultStopwatch : StopwatchId -> Stopwatch
 defaultStopwatch id =
   { id   = id
   , name = ""
-  , time = 0
+  , logs = []
   }
 
+type alias WorkingState =
+  { stopwatchId : StopwatchId
+  , startTime : Time.Posix
+  }
 type alias Model =
   { stopwatches : List Stopwatch
-  , workingStopwatchId : Maybe StopwatchId
-  , currentStopwatchId : Int
+  , workingState : Maybe WorkingState
+  , currentStopwatchId : StopwatchId
+  , currentTime : Maybe Time.Posix
   }
 
-isWorking : Model -> Stopwatch -> Bool
-isWorking model stopwatch =
-  case model.workingStopwatchId of
-    Just id -> stopwatch.id == id
+isWorking : Model -> StopwatchId -> Bool
+isWorking model stopwatchId =
+  case model.workingState of
+    Just ws -> stopwatchId == ws.stopwatchId
     Nothing -> False
 
 updateStopwatchByCond : (Stopwatch -> Bool) -> (Stopwatch -> Stopwatch) -> Model -> Model
@@ -63,8 +77,9 @@ type alias Second = Int
 init : () -> (Model, Cmd Msg)
 init _ =
   ( { stopwatches = []
-    , workingStopwatchId = Nothing
+    , workingState = Nothing
     , currentStopwatchId = 1
+    , currentTime = Nothing
     }
   , Cmd.none)
 
@@ -73,10 +88,11 @@ init _ =
 
 type Msg
   = DoNothing
-  | Tick
+  | Tick Time.Posix
   | AddStopwatch
   | RemoveStopwatch StopwatchId
-  | SwitchState StopwatchId
+  | Start StopwatchId
+  | Stop StopwatchId
   | UpdateName StopwatchId String
   | ResetTime StopwatchId
   | InputTime String
@@ -90,13 +106,10 @@ update msg model =
       , Cmd.none
       )
 
-    Tick ->
-      let
-        targetStopwatchId = Maybe.withDefault -1 model.workingStopwatchId
-      in
-        ( updateStopwatchByCond (\sw -> sw.id == targetStopwatchId) (\sw -> { sw | time = sw.time + 1 }) model
-        , Cmd.none
-        )
+    Tick time ->
+      ( { model | currentTime = Just time }
+      , Cmd.none
+      )
 
     AddStopwatch ->
       ( { model | stopwatches = (model.stopwatches ++ [ defaultStopwatch model.currentStopwatchId])
@@ -104,26 +117,27 @@ update msg model =
         }
       , Cmd.none
       )
+
     RemoveStopwatch stopwatchId ->
       let
-        nextWorkingStopwatchId = if (Maybe.withDefault -1 model.workingStopwatchId) == stopwatchId then Nothing else model.workingStopwatchId
+        nextWorkingState = if isWorking model stopwatchId then Nothing else model.workingState
         nextStopwatches = List.filter (\sw -> sw.id /= stopwatchId) model.stopwatches
       in
-        ( { model | workingStopwatchId = nextWorkingStopwatchId, stopwatches = nextStopwatches }
+        ( { model | workingState = nextWorkingState, stopwatches = nextStopwatches }
         , Cmd.none
         )
 
-    SwitchState stopwatchId ->
+    -- 動いているのがあれば止めてからstartする
+    Start stopwatchId ->
       let
-        nextWorkingStopwatchId =
-          case model.workingStopwatchId of
-            Just workingStopwatchId ->
-              if stopwatchId == workingStopwatchId then Nothing else Just stopwatchId
-            Nothing ->
-              Just stopwatchId
+        stoppedModel = updateStop model (Maybe.withDefault -1 <| Maybe.map .stopwatchId model.workingState)
+        startedModel = updateStart stoppedModel stopwatchId
       in
-        ( { model | workingStopwatchId = nextWorkingStopwatchId }
-        , Cmd.none )
+        ( startedModel, Cmd.none )
+
+    -- 該当stopwatchが動いてれば止める
+    Stop stopwatchId ->
+      ( (updateStop model stopwatchId), Cmd.none )
 
     UpdateName stopwatchId name ->
       ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | name = name }) model
@@ -131,7 +145,7 @@ update msg model =
       )
 
     ResetTime stopwatchId ->
-      ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | time = 0 }) model
+      ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | logs = [] }) model
       , Cmd.none
       )
 
@@ -161,92 +175,140 @@ update msg model =
       --    )
       ( model, Cmd.none )
 
-
-
-strToTime : String -> Maybe Int
-strToTime str =
+updateStart : Model -> StopwatchId -> Model
+updateStart model stopwatchId =
   let
-    hour   = String.left  2 str
-    minute = String.left  4 str |> String.right 2
-    second = String.right 2 str
+    nextWorkingState =
+      Maybe.map (\currentTime -> { stopwatchId = stopwatchId, startTime = currentTime }) model.currentTime
   in
-    Maybe.map3 hmsToTime
-      (String.toInt hour)
-      (String.toInt minute)
-      (String.toInt second)
+    { model | workingState = nextWorkingState }
+
+-- 該当stopwatchが動いてれば止める
+updateStop : Model -> StopwatchId -> Model
+updateStop model stopwatchId =
+  let
+    nextWorkingState =
+      case model.workingState of
+        Just ws -> if ws.stopwatchId == stopwatchId then Nothing else Just ws
+        Nothing -> Nothing
+
+    log =
+      Maybe.map2 (\ws currentTime ->
+        { startTime = ws.startTime
+        , endTime   = currentTime
+        , elapsedSecond = timeDiffSecond currentTime ws.startTime
+        }
+      ) model.workingState model.currentTime
+
+    logList = (Maybe.withDefault [] (Maybe.map List.singleton log))
+
+    newModel =
+      updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw ->
+        { sw | logs = logList ++ sw.logs }
+      ) model
+  in
+    { newModel | workingState = nextWorkingState }
 
 
-hmsToTime : Hour -> Minute -> Second -> Int
-hmsToTime h m s =
-  h * 60 * 60 +
-  m * 60 +
-  s
+
+--strToTime : String -> Maybe Int
+--strToTime str =
+--  let
+--    hour   = String.left  2 str
+--    minute = String.left  4 str |> String.right 2
+--    second = String.right 2 str
+--  in
+--    Maybe.map3 hmsToTime
+--      (String.toInt hour)
+--      (String.toInt minute)
+--      (String.toInt second)
+
+
+--hmsToTime : Hour -> Minute -> Second -> Int
+--hmsToTime h m s =
+--  h * 60 * 60 +
+--  m * 60 +
+--  s
 
 
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 1000 (always Tick)
+    Time.every 10 Tick
 
 -- VIEW
 
 view : Model -> Html Msg
 view model =
-  layout [] <|
-    row [ spacing 30 ]
-      (
-        ( List.map (\stopwatch ->
-          let
-            hour   = to2digit <| String.fromInt (stopwatch.time // (60 * 60))
-            minute = to2digit <| String.fromInt (modBy 60 (stopwatch.time // 60))
-            second = to2digit <| String.fromInt (modBy 60 stopwatch.time)
-            buttonText  = if isWorking model stopwatch then "■stop" else "▶start"
-            buttonColor = if isWorking model stopwatch then stopBGColor else startBGColor
-          in
-            column [ centerX, spacing 15]
-            [ row [ spacing 20 ]  -- title row
-              [ Input.text []
-                { onChange = UpdateName stopwatch.id
-                , text = stopwatch.name
-                , placeholder = Just (Input.placeholder [] (text "title"))
-                , label = Input.labelHidden "msg"
+  let
+    workingSecond = Maybe.withDefault 0 << Maybe.map2 timeDiffSecond model.currentTime <| Maybe.map .startTime model.workingState
+  in
+    layout [] <|
+      row [ spacing 30 ]
+        (
+          ( List.map (\stopwatch ->
+            let
+              elapsedSecond = getElapsedSecond stopwatch
+              timeSecond =
+                if isWorking model stopwatch.id then
+                  elapsedSecond + workingSecond
+                else
+                  elapsedSecond
+
+              hour   = to2digit <| String.fromInt (timeSecond // (60 * 60))
+              minute = to2digit <| String.fromInt (modBy 60 (timeSecond // 60))
+              second = to2digit <| String.fromInt (modBy 60 timeSecond)
+
+              (buttonText, buttonColor, buttonAction)  =
+                if isWorking model stopwatch.id then ("■stop", stopBGColor, Stop) else ("▶start", startBGColor, Start)
+
+              buttonProp =
+                { onPress = Just (buttonAction stopwatch.id)
+                , label   = centerEL [] (text buttonText)
                 }
+            in
+              column [ centerX, spacing 15]
+              [ row [ spacing 20 ]  -- title row
+                [ Input.text []
+                  { onChange = UpdateName stopwatch.id
+                  , text = stopwatch.name
+                  , placeholder = Just (Input.placeholder [] (text "title"))
+                  , label = Input.labelHidden "msg"
+                  }
+                  ,
+                  Input.button [ Font.color (rgb255 255 0 0) ]
+                  { onPress = Just (RemoveStopwatch stopwatch.id)
+                  , label = text "✖"
+                  }
+                ]
                 ,
-                Input.button [ Font.color (rgb255 255 0 0) ]
-                { onPress = Just (RemoveStopwatch stopwatch.id)
-                , label = text "✖"
-                }
-              ]
-              ,
-              row [ centerX ]  -- stopwatch row
-              [ centerEL [ Font.size 55 ]
-                (text (hour ++ ":" ++ minute ++ ":" ++ second))
-              ]
-              ,
-              row [ centerX, spacing 10] -- button row
-              [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
-                { onPress = Just (SwitchState stopwatch.id)
-                , label = centerEL [] (text buttonText)
-                }
+                row [ centerX ]  -- stopwatch row
+                [ centerEL [ Font.size 55 ]
+                  (text (hour ++ ":" ++ minute ++ ":" ++ second))
+                ]
                 ,
-                Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX])
-                { onPress = Just (ResetTime stopwatch.id)
-                , label = centerEL [] (text "reset")
-                }
+                row [ centerX, spacing 10] -- button row
+                [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
+                  buttonProp
+                  ,
+                  Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX])
+                  { onPress = Just (ResetTime stopwatch.id)
+                  , label = centerEL [] (text "reset")
+                  }
+                ]
               ]
-            ]
-          ) model.stopwatches
-        )
-        ++
-        [ el []
-          ( Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
-            { onPress = Just AddStopwatch
-            , label = centerEL [] (text "add")
-            }
+            ) model.stopwatches
           )
-        ]
-      )
+          ++
+          [ el []  -- add button
+            ( Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
+              { onPress = Just AddStopwatch
+              , label = centerEL [] (text "add")
+              }
+            )
+          ]
+        )
 
 to2digit : String -> String
 to2digit s = if String.length s >= 2 then s else "0" ++ s
@@ -262,6 +324,9 @@ toTimeFormat time =
 
 
 -- UTIL
+timeDiffSecond : Time.Posix -> Time.Posix -> Int
+timeDiffSecond t1 t2 = ((Time.posixToMillis t1) - (Time.posixToMillis t2)) // 1000
+
 normalButtonSize = [ width (px 100), height (px 50) ]
 
 centerEL : List (Attribute msg) -> Element msg -> Element msg
