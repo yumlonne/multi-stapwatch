@@ -4,6 +4,7 @@ import Html exposing (Html)
 --import Html.Events exposing (..)
 import Task
 import Time
+import TimeZone exposing (asia__tokyo)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -32,11 +33,11 @@ type alias Stopwatch =
 type alias LogRecord =
   { startTime : Time.Posix
   , endTime : Time.Posix
-  , elapsedSecond : Int
+  , elapsedMillis : Int
   }
 
 getElapsedSecond : Stopwatch -> Int
-getElapsedSecond sw = List.sum <| List.map .elapsedSecond sw.logs
+getElapsedSecond sw = (\s -> s // 1000) << List.sum <| List.map .elapsedMillis sw.logs
 
 defaultStopwatch : StopwatchId -> Stopwatch
 defaultStopwatch id =
@@ -196,7 +197,7 @@ updateStop model stopwatchId =
       Maybe.map2 (\ws currentTime ->
         { startTime = ws.startTime
         , endTime   = currentTime
-        , elapsedSecond = timeDiffSecond currentTime ws.startTime
+        , elapsedMillis = timeDiffMillis currentTime ws.startTime
         }
       ) model.workingState model.currentTime
 
@@ -297,6 +298,13 @@ view model =
                   , label = centerEL [] (text "reset")
                   }
                 ]
+                ,
+                column [ centerX ]  -- log row
+                ( List.map (\log ->
+                    centerEL []
+                    (text <| (toTimeString log.startTime ++ " ~ " ++ toTimeString log.endTime ) )
+                  ) stopwatch.logs
+                )
               ]
             ) model.stopwatches
           )
@@ -324,13 +332,40 @@ toTimeFormat time =
 
 
 -- UTIL
+timeDiffMillis : Time.Posix -> Time.Posix -> Int
+timeDiffMillis t1 t2 = (Time.posixToMillis t1) - (Time.posixToMillis t2)
 timeDiffSecond : Time.Posix -> Time.Posix -> Int
-timeDiffSecond t1 t2 = ((Time.posixToMillis t1) - (Time.posixToMillis t2)) // 1000
+timeDiffSecond t1 t2 = (\s -> s // 1000) <| timeDiffMillis t1 t2  -- 何故かポイントフリースタイルにできない
 
 normalButtonSize = [ width (px 100), height (px 50) ]
 
 centerEL : List (Attribute msg) -> Element msg -> Element msg
 centerEL l e = el ([centerX, centerY] ++ l) e
+
+
+toTimeString : Time.Posix -> String
+toTimeString posix =
+    let
+        hour =
+            posix
+                |> Time.toHour (asia__tokyo())
+                |> String.fromInt
+                |> String.pad 2 '0'
+
+        minute =
+            posix
+                |> Time.toMinute (asia__tokyo())
+                |> String.fromInt
+                |> String.pad 2 '0'
+
+        second =
+            posix
+                |> Time.toSecond (asia__tokyo())
+                |> String.fromInt
+                |> String.pad 2 '0'
+    in
+    [ hour, minute, second ]
+        |> String.join ":"
 
 -- DATA
 

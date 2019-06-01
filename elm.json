@@ -12,6 +12,7 @@
             "elm/regex": "1.0.0",
             "elm/time": "1.0.0",
             "elm-community/list-extra": "8.2.0",
+            "justinmimbs/timezone-data": "2.1.2",
             "mdgriffith/elm-ui": "1.1.0"
         },
         "indirect": {
