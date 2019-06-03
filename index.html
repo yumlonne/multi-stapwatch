@@ -12784,192 +12784,200 @@ var mdgriffith$elm_ui$Element$Input$text = mdgriffith$elm_ui$Element$Input$textH
 		q: mdgriffith$elm_ui$Element$Input$TextInputNode('text')
 	});
 var author$project$Main$view = function (model) {
-	var workingSecond = A3(
-		elm$core$Basics$composeL,
-		elm$core$Maybe$withDefault(0),
-		A2(elm$core$Maybe$map2, author$project$Main$timeDiffSecond, model.U),
-		A2(
-			elm$core$Maybe$map,
-			function ($) {
-				return $.E;
-			},
-			model.m));
-	return A2(
-		mdgriffith$elm_ui$Element$layout,
-		_List_Nil,
-		A2(
-			mdgriffith$elm_ui$Element$row,
-			_List_fromArray(
-				[
-					mdgriffith$elm_ui$Element$spacing(30),
-					mdgriffith$elm_ui$Element$alignTop
-				]),
-			_Utils_ap(
-				A2(
-					elm$core$List$map,
-					function (stopwatch) {
-						var elapsedSecond = author$project$Main$getElapsedSecond(stopwatch);
-						var timeSecond = A2(author$project$Main$isWorking, model, stopwatch.h) ? (elapsedSecond + workingSecond) : elapsedSecond;
-						var hour = author$project$Main$to2digit(
-							elm$core$String$fromInt((timeSecond / (60 * 60)) | 0));
-						var minute = author$project$Main$to2digit(
-							elm$core$String$fromInt(
-								A2(elm$core$Basics$modBy, 60, (timeSecond / 60) | 0)));
-						var second = author$project$Main$to2digit(
-							elm$core$String$fromInt(
-								A2(elm$core$Basics$modBy, 60, timeSecond)));
-						var _n0 = A2(author$project$Main$isWorking, model, stopwatch.h) ? _Utils_Tuple3('■stop', author$project$Main$stopBGColor, author$project$Main$Stop) : _Utils_Tuple3('▶start', author$project$Main$startBGColor, author$project$Main$Start);
-						var buttonText = _n0.a;
-						var buttonColor = _n0.b;
-						var buttonAction = _n0.c;
-						var buttonProp = {
-							ag: A2(
-								author$project$Main$centerEL,
-								_List_Nil,
-								mdgriffith$elm_ui$Element$text(buttonText)),
-							aC: elm$core$Maybe$Just(
-								buttonAction(stopwatch.h))
-						};
-						return A2(
-							mdgriffith$elm_ui$Element$column,
-							_List_fromArray(
-								[
-									mdgriffith$elm_ui$Element$centerX,
-									mdgriffith$elm_ui$Element$spacing(15),
-									mdgriffith$elm_ui$Element$alignTop
-								]),
-							_List_fromArray(
-								[
-									A2(
-									mdgriffith$elm_ui$Element$row,
-									_List_fromArray(
-										[
-											mdgriffith$elm_ui$Element$spacing(20)
-										]),
-									_List_fromArray(
-										[
-											A2(
-											mdgriffith$elm_ui$Element$Input$text,
-											_List_Nil,
-											{
-												ag: mdgriffith$elm_ui$Element$Input$labelHidden('msg'),
-												cP: author$project$Main$UpdateName(stopwatch.h),
-												cX: elm$core$Maybe$Just(
-													A2(
-														mdgriffith$elm_ui$Element$Input$placeholder,
-														_List_Nil,
-														mdgriffith$elm_ui$Element$text('title'))),
-												dg: stopwatch.aB
-											}),
-											A2(
-											mdgriffith$elm_ui$Element$Input$button,
-											_List_fromArray(
-												[
-													mdgriffith$elm_ui$Element$Font$color(
-													A3(mdgriffith$elm_ui$Element$rgb255, 255, 0, 0))
-												]),
-											{
-												ag: mdgriffith$elm_ui$Element$text('✖'),
-												aC: elm$core$Maybe$Just(
-													author$project$Main$RemoveStopwatch(stopwatch.h))
-											})
-										])),
-									A2(
-									mdgriffith$elm_ui$Element$row,
-									_List_fromArray(
-										[mdgriffith$elm_ui$Element$centerX]),
-									_List_fromArray(
-										[
-											A2(
-											author$project$Main$centerEL,
-											_List_fromArray(
-												[
-													mdgriffith$elm_ui$Element$Font$size(55)
-												]),
-											mdgriffith$elm_ui$Element$text(hour + (':' + (minute + (':' + second)))))
-										])),
-									A2(
-									mdgriffith$elm_ui$Element$row,
-									_List_fromArray(
-										[
-											mdgriffith$elm_ui$Element$centerX,
-											mdgriffith$elm_ui$Element$spacing(10)
-										]),
-									_List_fromArray(
-										[
-											A2(
-											mdgriffith$elm_ui$Element$Input$button,
-											_Utils_ap(
-												author$project$Main$normalButtonSize,
-												_List_fromArray(
-													[
-														mdgriffith$elm_ui$Element$Background$color(buttonColor),
-														mdgriffith$elm_ui$Element$centerX
-													])),
-											buttonProp),
-											A2(
-											mdgriffith$elm_ui$Element$Input$button,
-											_Utils_ap(
-												author$project$Main$normalButtonSize,
-												_List_fromArray(
-													[
-														mdgriffith$elm_ui$Element$Background$color(
-														A3(mdgriffith$elm_ui$Element$rgb255, 244, 235, 66)),
-														mdgriffith$elm_ui$Element$centerX
-													])),
-											{
-												ag: A2(
-													author$project$Main$centerEL,
-													_List_Nil,
-													mdgriffith$elm_ui$Element$text('reset')),
-												aC: elm$core$Maybe$Just(
-													author$project$Main$ResetTime(stopwatch.h))
-											})
-										])),
-									A2(
-									mdgriffith$elm_ui$Element$column,
-									_List_fromArray(
-										[mdgriffith$elm_ui$Element$centerX]),
-									A2(
-										elm$core$List$map,
-										function (log) {
-											return A2(
-												author$project$Main$centerEL,
-												_List_Nil,
-												mdgriffith$elm_ui$Element$text(
-													author$project$Main$toTimeString(log.E) + (' ~ ' + author$project$Main$toTimeString(log.aP))));
-										},
-										stopwatch.L))
-								]));
-					},
-					model.p),
-				_List_fromArray(
-					[
-						A2(
-						mdgriffith$elm_ui$Element$el,
+	return {
+		ca: _List_fromArray(
+			[
+				function () {
+				var workingSecond = A3(
+					elm$core$Basics$composeL,
+					elm$core$Maybe$withDefault(0),
+					A2(elm$core$Maybe$map2, author$project$Main$timeDiffSecond, model.U),
+					A2(
+						elm$core$Maybe$map,
+						function ($) {
+							return $.E;
+						},
+						model.m));
+				return A2(
+					mdgriffith$elm_ui$Element$layout,
+					_List_Nil,
+					A2(
+						mdgriffith$elm_ui$Element$row,
 						_List_fromArray(
 							[
-								mdgriffith$elm_ui$Element$alignTop,
-								mdgriffith$elm_ui$Element$padding(10)
+								mdgriffith$elm_ui$Element$spacing(30),
+								mdgriffith$elm_ui$Element$alignTop
 							]),
-						A2(
-							mdgriffith$elm_ui$Element$Input$button,
-							_Utils_ap(
-								author$project$Main$normalButtonSize,
-								_List_fromArray(
-									[
-										mdgriffith$elm_ui$Element$Background$color(
-										A3(mdgriffith$elm_ui$Element$rgb255, 22, 167, 237)),
-										mdgriffith$elm_ui$Element$centerX
-									])),
-							{
-								ag: A2(
-									author$project$Main$centerEL,
-									_List_Nil,
-									mdgriffith$elm_ui$Element$text('add')),
-								aC: elm$core$Maybe$Just(author$project$Main$AddStopwatch)
-							}))
-					]))));
+						_Utils_ap(
+							A2(
+								elm$core$List$map,
+								function (stopwatch) {
+									var elapsedSecond = author$project$Main$getElapsedSecond(stopwatch);
+									var timeSecond = A2(author$project$Main$isWorking, model, stopwatch.h) ? (elapsedSecond + workingSecond) : elapsedSecond;
+									var hour = author$project$Main$to2digit(
+										elm$core$String$fromInt((timeSecond / (60 * 60)) | 0));
+									var minute = author$project$Main$to2digit(
+										elm$core$String$fromInt(
+											A2(elm$core$Basics$modBy, 60, (timeSecond / 60) | 0)));
+									var second = author$project$Main$to2digit(
+										elm$core$String$fromInt(
+											A2(elm$core$Basics$modBy, 60, timeSecond)));
+									var _n0 = A2(author$project$Main$isWorking, model, stopwatch.h) ? _Utils_Tuple3('■stop', author$project$Main$stopBGColor, author$project$Main$Stop) : _Utils_Tuple3('▶start', author$project$Main$startBGColor, author$project$Main$Start);
+									var buttonText = _n0.a;
+									var buttonColor = _n0.b;
+									var buttonAction = _n0.c;
+									var buttonProp = {
+										ag: A2(
+											author$project$Main$centerEL,
+											_List_Nil,
+											mdgriffith$elm_ui$Element$text(buttonText)),
+										aC: elm$core$Maybe$Just(
+											buttonAction(stopwatch.h))
+									};
+									return A2(
+										mdgriffith$elm_ui$Element$column,
+										_List_fromArray(
+											[
+												mdgriffith$elm_ui$Element$centerX,
+												mdgriffith$elm_ui$Element$spacing(15),
+												mdgriffith$elm_ui$Element$alignTop
+											]),
+										_List_fromArray(
+											[
+												A2(
+												mdgriffith$elm_ui$Element$row,
+												_List_fromArray(
+													[
+														mdgriffith$elm_ui$Element$spacing(20)
+													]),
+												_List_fromArray(
+													[
+														A2(
+														mdgriffith$elm_ui$Element$Input$text,
+														_List_Nil,
+														{
+															ag: mdgriffith$elm_ui$Element$Input$labelHidden('msg'),
+															cP: author$project$Main$UpdateName(stopwatch.h),
+															cX: elm$core$Maybe$Just(
+																A2(
+																	mdgriffith$elm_ui$Element$Input$placeholder,
+																	_List_Nil,
+																	mdgriffith$elm_ui$Element$text('title'))),
+															dg: stopwatch.aB
+														}),
+														A2(
+														mdgriffith$elm_ui$Element$Input$button,
+														_List_fromArray(
+															[
+																mdgriffith$elm_ui$Element$Font$color(
+																A3(mdgriffith$elm_ui$Element$rgb255, 255, 0, 0))
+															]),
+														{
+															ag: mdgriffith$elm_ui$Element$text('✖'),
+															aC: elm$core$Maybe$Just(
+																author$project$Main$RemoveStopwatch(stopwatch.h))
+														})
+													])),
+												A2(
+												mdgriffith$elm_ui$Element$row,
+												_List_fromArray(
+													[mdgriffith$elm_ui$Element$centerX]),
+												_List_fromArray(
+													[
+														A2(
+														author$project$Main$centerEL,
+														_List_fromArray(
+															[
+																mdgriffith$elm_ui$Element$Font$size(55)
+															]),
+														mdgriffith$elm_ui$Element$text(hour + (':' + (minute + (':' + second)))))
+													])),
+												A2(
+												mdgriffith$elm_ui$Element$row,
+												_List_fromArray(
+													[
+														mdgriffith$elm_ui$Element$centerX,
+														mdgriffith$elm_ui$Element$spacing(10)
+													]),
+												_List_fromArray(
+													[
+														A2(
+														mdgriffith$elm_ui$Element$Input$button,
+														_Utils_ap(
+															author$project$Main$normalButtonSize,
+															_List_fromArray(
+																[
+																	mdgriffith$elm_ui$Element$Background$color(buttonColor),
+																	mdgriffith$elm_ui$Element$centerX
+																])),
+														buttonProp),
+														A2(
+														mdgriffith$elm_ui$Element$Input$button,
+														_Utils_ap(
+															author$project$Main$normalButtonSize,
+															_List_fromArray(
+																[
+																	mdgriffith$elm_ui$Element$Background$color(
+																	A3(mdgriffith$elm_ui$Element$rgb255, 244, 235, 66)),
+																	mdgriffith$elm_ui$Element$centerX
+																])),
+														{
+															ag: A2(
+																author$project$Main$centerEL,
+																_List_Nil,
+																mdgriffith$elm_ui$Element$text('reset')),
+															aC: elm$core$Maybe$Just(
+																author$project$Main$ResetTime(stopwatch.h))
+														})
+													])),
+												A2(
+												mdgriffith$elm_ui$Element$column,
+												_List_fromArray(
+													[mdgriffith$elm_ui$Element$centerX]),
+												A2(
+													elm$core$List$map,
+													function (log) {
+														return A2(
+															author$project$Main$centerEL,
+															_List_Nil,
+															mdgriffith$elm_ui$Element$text(
+																author$project$Main$toTimeString(log.E) + (' ~ ' + author$project$Main$toTimeString(log.aP))));
+													},
+													stopwatch.L))
+											]));
+								},
+								model.p),
+							_List_fromArray(
+								[
+									A2(
+									mdgriffith$elm_ui$Element$el,
+									_List_fromArray(
+										[
+											mdgriffith$elm_ui$Element$alignTop,
+											mdgriffith$elm_ui$Element$padding(10)
+										]),
+									A2(
+										mdgriffith$elm_ui$Element$Input$button,
+										_Utils_ap(
+											author$project$Main$normalButtonSize,
+											_List_fromArray(
+												[
+													mdgriffith$elm_ui$Element$Background$color(
+													A3(mdgriffith$elm_ui$Element$rgb255, 22, 167, 237)),
+													mdgriffith$elm_ui$Element$centerX
+												])),
+										{
+											ag: A2(
+												author$project$Main$centerEL,
+												_List_Nil,
+												mdgriffith$elm_ui$Element$text('add')),
+											aC: elm$core$Maybe$Just(author$project$Main$AddStopwatch)
+										}))
+								]))));
+			}()
+			]),
+		dv: 'Stopwatch'
+	};
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 1, a: a};
@@ -13165,8 +13173,8 @@ var elm$url$Url$fromString = function (str) {
 		1,
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
-var elm$browser$Browser$element = _Browser_element;
-var author$project$Main$main = elm$browser$Browser$element(
+var elm$browser$Browser$document = _Browser_document;
+var author$project$Main$main = elm$browser$Browser$document(
 	{cH: author$project$Main$init, df: author$project$Main$subscriptions, dz: author$project$Main$update, dB: author$project$Main$view});
 _Platform_export({'Main':{'init':author$project$Main$main(
 	elm$json$Json$Decode$succeed(0))(0)}});}(this));

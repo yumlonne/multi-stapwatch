@@ -1,9 +1,9 @@
-module Main exposing (Hour, LogRecord, Minute, Model, Msg(..), Second, Stopwatch, StopwatchId, WorkingState, centerEL, defaultStopwatch, getElapsedSecond, getStopwatchById, init, isWorking, main, normalButtonSize, startBGColor, stopBGColor, subscriptions, timeDiffMillis, timeDiffSecond, to2digit, toTimeFormat, toTimeString, update, updateStart, updateStop, updateStopwatchByCond, view)
+module Main exposing (main)
 
 --import Html.Attributes exposing (..)
 --import Html.Events exposing (..)
 
-import Browser
+import Browser exposing (Document)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -21,7 +21,7 @@ import TimeZone exposing (asia__tokyo)
 
 
 main =
-    Browser.element
+    Browser.document
         { init = init
         , view = view
         , update = update
@@ -319,97 +319,101 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
-    let
-        workingSecond =
-            Maybe.withDefault 0 << Maybe.map2 timeDiffSecond model.currentTime <| Maybe.map .startTime model.workingState
-    in
-    layout [] <|
-        row [ spacing 30, alignTop ]
-            (List.map
-                (\stopwatch ->
-                    let
-                        elapsedSecond =
-                            getElapsedSecond stopwatch
+    { title = "Stopwatch"
+    , body =
+        [ let
+            workingSecond =
+                Maybe.withDefault 0 << Maybe.map2 timeDiffSecond model.currentTime <| Maybe.map .startTime model.workingState
+          in
+          layout [] <|
+            row [ spacing 30, alignTop ]
+                (List.map
+                    (\stopwatch ->
+                        let
+                            elapsedSecond =
+                                getElapsedSecond stopwatch
 
-                        timeSecond =
-                            if isWorking model stopwatch.id then
-                                elapsedSecond + workingSecond
+                            timeSecond =
+                                if isWorking model stopwatch.id then
+                                    elapsedSecond + workingSecond
 
-                            else
-                                elapsedSecond
+                                else
+                                    elapsedSecond
 
-                        hour =
-                            to2digit <| String.fromInt (timeSecond // (60 * 60))
+                            hour =
+                                to2digit <| String.fromInt (timeSecond // (60 * 60))
 
-                        minute =
-                            to2digit <| String.fromInt (modBy 60 (timeSecond // 60))
+                            minute =
+                                to2digit <| String.fromInt (modBy 60 (timeSecond // 60))
 
-                        second =
-                            to2digit <| String.fromInt (modBy 60 timeSecond)
+                            second =
+                                to2digit <| String.fromInt (modBy 60 timeSecond)
 
-                        ( buttonText, buttonColor, buttonAction ) =
-                            if isWorking model stopwatch.id then
-                                ( "■stop", stopBGColor, Stop )
+                            ( buttonText, buttonColor, buttonAction ) =
+                                if isWorking model stopwatch.id then
+                                    ( "■stop", stopBGColor, Stop )
 
-                            else
-                                ( "▶start", startBGColor, Start )
+                                else
+                                    ( "▶start", startBGColor, Start )
 
-                        buttonProp =
-                            { onPress = Just (buttonAction stopwatch.id)
-                            , label = centerEL [] (text buttonText)
-                            }
-                    in
-                    column [ centerX, spacing 15, alignTop ]
-                        [ row [ spacing 20 ]
-                            -- title row
-                            [ Input.text []
-                                { onChange = UpdateName stopwatch.id
-                                , text = stopwatch.name
-                                , placeholder = Just (Input.placeholder [] (text "title"))
-                                , label = Input.labelHidden "msg"
+                            buttonProp =
+                                { onPress = Just (buttonAction stopwatch.id)
+                                , label = centerEL [] (text buttonText)
                                 }
-                            , Input.button [ Font.color (rgb255 255 0 0) ]
-                                { onPress = Just (RemoveStopwatch stopwatch.id)
-                                , label = text "✖"
-                                }
-                            ]
-                        , row [ centerX ]
-                            -- stopwatch row
-                            [ centerEL [ Font.size 55 ]
-                                (text (hour ++ ":" ++ minute ++ ":" ++ second))
-                            ]
-                        , row [ centerX, spacing 10 ]
-                            -- button row
-                            [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
-                                buttonProp
-                            , Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX ])
-                                { onPress = Just (ResetTime stopwatch.id)
-                                , label = centerEL [] (text "reset")
-                                }
-                            ]
-                        , column [ centerX ]
-                            -- log row
-                            (List.map
-                                (\log ->
-                                    centerEL []
-                                        (text <| (toTimeString log.startTime ++ " ~ " ++ toTimeString log.endTime))
+                        in
+                        column [ centerX, spacing 15, alignTop ]
+                            [ row [ spacing 20 ]
+                                -- title row
+                                [ Input.text []
+                                    { onChange = UpdateName stopwatch.id
+                                    , text = stopwatch.name
+                                    , placeholder = Just (Input.placeholder [] (text "title"))
+                                    , label = Input.labelHidden "msg"
+                                    }
+                                , Input.button [ Font.color (rgb255 255 0 0) ]
+                                    { onPress = Just (RemoveStopwatch stopwatch.id)
+                                    , label = text "✖"
+                                    }
+                                ]
+                            , row [ centerX ]
+                                -- stopwatch row
+                                [ centerEL [ Font.size 55 ]
+                                    (text (hour ++ ":" ++ minute ++ ":" ++ second))
+                                ]
+                            , row [ centerX, spacing 10 ]
+                                -- button row
+                                [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
+                                    buttonProp
+                                , Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX ])
+                                    { onPress = Just (ResetTime stopwatch.id)
+                                    , label = centerEL [] (text "reset")
+                                    }
+                                ]
+                            , column [ centerX ]
+                                -- log row
+                                (List.map
+                                    (\log ->
+                                        centerEL []
+                                            (text <| (toTimeString log.startTime ++ " ~ " ++ toTimeString log.endTime))
+                                    )
+                                    stopwatch.logs
                                 )
-                                stopwatch.logs
+                            ]
+                    )
+                    model.stopwatches
+                    ++ [ el [ alignTop, padding 10 ]
+                            -- add button
+                            (Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
+                                { onPress = Just AddStopwatch
+                                , label = centerEL [] (text "add")
+                                }
                             )
-                        ]
+                       ]
                 )
-                model.stopwatches
-                ++ [ el [ alignTop, padding 10 ]
-                        -- add button
-                        (Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
-                            { onPress = Just AddStopwatch
-                            , label = centerEL [] (text "add")
-                            }
-                        )
-                   ]
-            )
+        ]
+    }
 
 
 to2digit : String -> String
