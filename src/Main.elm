@@ -1,8 +1,5 @@
 module Main exposing (main)
 
---import Html.Attributes exposing (..)
---import Html.Events exposing (..)
-
 import Browser exposing (Document)
 import Element exposing (..)
 import Element.Background as Background
@@ -384,9 +381,9 @@ view model =
                                 ]
                             , row [ centerX, spacing 10 ]
                                 -- button row
-                                [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX ])
+                                [ Input.button (normalButtonSize ++ [ Background.color buttonColor, centerX, Border.rounded 5 ])
                                     buttonProp
-                                , Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX ])
+                                , Input.button (normalButtonSize ++ [ Background.color (rgb255 244 235 66), centerX, Border.rounded 5 ])
                                     { onPress = Just (ResetTime stopwatch.id)
                                     , label = centerEL [] (text "reset")
                                     }
@@ -405,7 +402,7 @@ view model =
                     model.stopwatches
                     ++ [ el [ alignTop, padding 10 ]
                             -- add button
-                            (Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX ])
+                            (Input.button (normalButtonSize ++ [ Background.color (rgb255 22 167 237), centerX, Border.rounded 5 ])
                                 { onPress = Just AddStopwatch
                                 , label = centerEL [] (text "add")
                                 }
@@ -452,10 +449,6 @@ timeDiffMillis t1 t2 =
 timeDiffSecond : Time.Posix -> Time.Posix -> Int
 timeDiffSecond t1 t2 =
     (\s -> s // 1000) <| timeDiffMillis t1 t2
-
-
-
--- 何故かポイントフリースタイルにできない
 
 
 normalButtonSize =
