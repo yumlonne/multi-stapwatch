@@ -8,7 +8,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import List.Extra exposing (..)
-import Task
+import Task exposing (Task)
 import Time
 import TimeZone exposing (asia__tokyo)
 
@@ -142,6 +142,7 @@ type Msg
     | Stop StopwatchId
     | UpdateName StopwatchId String
     | ResetTime StopwatchId
+    | UpdateStartTime Time.Posix
     | InputTime String
     | ApplyTime
 
@@ -204,7 +205,26 @@ update msg model =
             )
 
         ResetTime stopwatchId ->
-            ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | logs = [] }) model
+            let
+                nextModel =
+                    updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | logs = [] }) model
+            in
+            if Maybe.map .stopwatchId model.workingState == Just stopwatchId then
+                ( nextModel
+                , Task.perform UpdateStartTime getCurrentTime
+                )
+
+            else
+                ( nextModel
+                , Cmd.none
+                )
+
+        UpdateStartTime time ->
+            let
+                updateStartTime workingState =
+                    { workingState | startTime = time }
+            in
+            ( { model | workingState = Maybe.map updateStartTime model.workingState }
             , Cmd.none
             )
 
@@ -310,6 +330,15 @@ updateStop model stopwatchId =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Time.every 10 Tick
+
+
+
+-- COMMAND
+
+
+getCurrentTime : Task Never Time.Posix
+getCurrentTime =
+    Time.now
 
 
 
