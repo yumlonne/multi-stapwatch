@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser exposing (Document)
+import Browser.Events
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -329,7 +330,7 @@ updateStop model stopwatchId =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 10 Tick
+    Browser.Events.onAnimationFrame Tick
 
 
 
