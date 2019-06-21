@@ -7,8 +7,10 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Element.Events as Events
 import Html exposing (Html)
 import List.Extra exposing (..)
+import Maybe.Extra exposing (..)
 import Task exposing (Task)
 import Time
 import TimeZone exposing (asia__tokyo)
@@ -38,27 +40,76 @@ type alias StopwatchId =
 type alias Stopwatch =
     { id : StopwatchId
     , name : String
-    , logs : List LogRecord
+    , log : Log
     }
 
 
-type alias LogRecord =
+type alias Log =
+    { records : List LogRecord
+
+    -- for VIEW
+    , input : Maybe String
+    }
+
+
+type LogRecord
+    = Normal NormalLogRecord
+    | Manual ManualInput
+
+
+logRecordToString : LogRecord -> String
+logRecordToString logRecord =
+    case logRecord of
+        Normal normalLogRecord ->
+            toTimeString normalLogRecord.startTime ++ " ~ " ++ toTimeString normalLogRecord.endTime
+
+        Manual manualInput ->
+            "manual input: " ++ String.fromInt manualInput.offsetSecond ++ " sec."
+
+
+logRecordToElapsedMillis : LogRecord -> Int
+logRecordToElapsedMillis logRecord =
+    case logRecord of
+        Normal normalLogRecord ->
+            normalLogRecord.elapsedMillis
+
+        Manual manualInput ->
+            manualInput.offsetSecond * 1000
+
+
+type alias NormalLogRecord =
     { startTime : Time.Posix
     , endTime : Time.Posix
     , elapsedMillis : Int
     }
 
 
+type alias ManualInput =
+    { offsetSecond : Int }
+
+
+setLogRecords : List LogRecord -> Log -> Log
+setLogRecords records log =
+    { log | records = records }
+
+setLogInput : Maybe String -> Log -> Log
+setLogInput strMaybe log =
+    { log | input = strMaybe }
+
+
 getElapsedSecond : Stopwatch -> Int
 getElapsedSecond sw =
-    (\s -> s // 1000) << List.sum <| List.map .elapsedMillis sw.logs
+    (\s -> s // 1000) << List.sum <| List.map logRecordToElapsedMillis sw.log.records
 
 
 defaultStopwatch : StopwatchId -> Stopwatch
 defaultStopwatch id =
     { id = id
     , name = ""
-    , logs = []
+    , log =
+        { records = []
+        , input = Nothing
+        }
     }
 
 
@@ -144,8 +195,9 @@ type Msg
     | UpdateName StopwatchId String
     | ResetTime StopwatchId
     | UpdateStartTime Time.Posix
-    | InputTime String
-    | ApplyTime
+    | ShowInputLog StopwatchId
+    | InputTime StopwatchId String
+    | ApplyManualInput StopwatchId
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -208,7 +260,7 @@ update msg model =
         ResetTime stopwatchId ->
             let
                 nextModel =
-                    updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | logs = [] }) model
+                    updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | log = setLogRecords [] sw.log }) model
             in
             if Maybe.map .stopwatchId model.workingState == Just stopwatchId then
                 ( nextModel
@@ -229,31 +281,84 @@ update msg model =
             , Cmd.none
             )
 
-        InputTime time ->
-            --let
-            --  timeLength = String.length time
-            --in
-            --  if timeLength > 6 then  -- "hhmmdd"
-            --    ( model
-            --    , Cmd.none
-            --    )
-            --  else
-            --    ( { model | inputTime = String.left 6 time }
-            --    , Cmd.none
-            --    )
-            ( model, Cmd.none )
+        ShowInputLog stopwatchId ->
+            let
+                nextStopwatch =
+                    case getStopwatchById stopwatchId model of
+                        Just sw ->
+                            let
+                                log =
+                                    sw.log
+                            in
+                            Just { sw | log = { log | input = Just "" } }
 
-        ApplyTime ->
-            --case strToTime model.inputTime of
-            --  Just time ->
-            --    ( { model | time = time }
-            --    , Cmd.none
-            --    )
-            --  Nothing ->
-            --    ( model
-            --    , Cmd.none
-            --    )
-            ( model, Cmd.none )
+                        Nothing ->
+                            Nothing
+
+                nextModel =
+                    nextStopwatch
+                        |> Maybe.map (\sw -> updateStopwatchByCond (\s -> s.id == stopwatchId) (always sw) model)
+                        |> Maybe.withDefault model
+            in
+            ( nextModel
+            , Cmd.none
+            )
+
+        InputTime stopwatchId str ->
+            let
+                targetStopwatchMaybe = getStopwatchById stopwatchId model
+
+                nextModel =
+                    targetStopwatchMaybe
+                        |> Maybe.map
+                            (\stopwatch ->
+                                updateStopwatchByCond
+                                    (\sw -> sw.id == stopwatchId)
+                                    (\sw -> { sw | log = setLogInput (Just str) sw.log })
+                                    model
+                            )
+                        |> Maybe.withDefault model
+            in
+            ( nextModel
+            , Cmd.none
+            )
+
+        ApplyManualInput stopwatchId ->
+            let
+                _ = Debug.log <| "ApplyManualInput" ++ String.fromInt stopwatchId
+                targetStopwatchMaybe = getStopwatchById stopwatchId model
+
+                offsetSecMaybe =
+                    targetStopwatchMaybe
+                        |> Maybe.andThen (.log >> .input)
+                        |> Maybe.andThen String.toInt
+
+
+                nextModel =
+                    offsetSecMaybe
+                        |> Maybe.map (\offset -> ManualInput offset)
+                        |> Maybe.map Manual
+                        |> Maybe.map
+                            (\manualInput ->
+                                updateStopwatchByCond
+                                    (\sw -> sw.id == stopwatchId)
+                                    (\sw ->
+                                        let
+                                            log = setLogRecords (manualInput :: sw.log.records) sw.log
+                                        in
+                                        { sw | log = log }
+                                    )
+                                    model
+                            )
+                        |> Maybe.withDefault model
+                        |> (\m ->
+                                updateStopwatchByCond
+                                    (\sw -> sw.id == stopwatchId)
+                                    (\sw -> { sw | log = setLogInput Nothing sw.log })
+                                    m
+                            )
+            in
+            ( nextModel, Cmd.none )
 
 
 updateStart : Model -> StopwatchId -> Model
@@ -296,12 +401,12 @@ updateStop model stopwatchId =
                 model.currentTime
 
         logList =
-            Maybe.withDefault [] (Maybe.map List.singleton log)
+            Maybe.withDefault [] (Maybe.map (List.singleton << Normal) log)
 
         newModel =
             updateStopwatchByCond (\sw -> sw.id == stopwatchId)
                 (\sw ->
-                    { sw | logs = logList ++ sw.logs }
+                    { sw | log = setLogRecords (logList ++ sw.log.records) sw.log }
                 )
                 model
     in
@@ -420,12 +525,34 @@ view model =
                                 ]
                             , column [ centerX ]
                                 -- log row
-                                (List.map
-                                    (\log ->
-                                        centerEL []
-                                            (text <| (toTimeString log.startTime ++ " ~ " ++ toTimeString log.endTime))
-                                    )
-                                    stopwatch.logs
+                                ([ row [ spacing 20 ]
+                                    [ el [ Font.size 30, Font.bold ] (text "Logs")
+                                    , Input.button
+                                        [ width <| px 25
+                                        , height <| px 25
+                                        , Background.color <| rgb255 64 255 64
+                                        , Border.rounded 12
+                                        ]
+                                        { label =
+                                            el
+                                                [ Font.bold
+                                                , centerX
+                                                , centerY
+                                                , Font.color <| rgb255 255 255 255
+                                                ]
+                                            <|
+                                                text "+"
+                                        , onPress = Just <| ShowInputLog stopwatch.id
+                                        }
+                                    ]
+                                 ]
+                                    ++ (toList <| manualInputLogView stopwatch)
+                                    ++ List.map
+                                        (\log ->
+                                            centerEL []
+                                                (text <| logRecordToString log)
+                                        )
+                                        stopwatch.log.records
                                 )
                             ]
                     )
@@ -441,6 +568,24 @@ view model =
                 )
         ]
     }
+
+
+
+-- VIEW Components
+
+
+manualInputLogView : Stopwatch -> Maybe (Element Msg)
+manualInputLogView stopwatch =
+    stopwatch.log.input
+        |> Maybe.map
+            (\inputStr ->
+                Input.text [ Events.onLoseFocus <| ApplyManualInput stopwatch.id, Input.focusedOnLoad ]
+                    { label = Input.labelHidden ""
+                    , onChange = InputTime stopwatch.id
+                    , placeholder = Nothing
+                    , text = inputStr
+                    }
+            )
 
 
 to2digit : String -> String
