@@ -1,14 +1,17 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser exposing (Document)
 import Browser.Events
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Element.Events as Events
 import Html exposing (Html)
+import Json.Decode
+import Json.Encode
+import Json.Encode.Extra
 import List.Extra exposing (..)
 import Maybe.Extra exposing (..)
 import Task exposing (Task)
@@ -57,6 +60,87 @@ type LogRecord
     | Manual ManualInput
 
 
+type alias NormalLogRecord =
+    { startTime : Time.Posix
+    , endTime : Time.Posix
+    , elapsedMillis : Int
+    }
+
+
+type alias ManualInput =
+    { offsetSecond : Int }
+
+
+type alias WorkingState =
+    { stopwatchId : StopwatchId
+    , startTime : Time.Posix
+    }
+
+
+type alias Model =
+    { stopwatches : List Stopwatch
+    , workingState : Maybe WorkingState
+    , currentStopwatchId : StopwatchId
+    , currentTime : Maybe Time.Posix
+    }
+
+
+
+-- ENCODERS
+
+
+logRecordEncoder : LogRecord -> Json.Encode.Value
+logRecordEncoder logRecord =
+    let
+        ( objectName, encoder ) =
+            case logRecord of
+                Normal normalLogRecord ->
+                    ( "normal"
+                    , Json.Encode.object
+                        [ ( "startTime", Json.Encode.int (Time.posixToMillis normalLogRecord.startTime) )
+                        , ( "endTime", Json.Encode.int (Time.posixToMillis normalLogRecord.endTime) )
+                        , ( "elapsedMillis", Json.Encode.int normalLogRecord.elapsedMillis )
+                        ]
+                    )
+
+                Manual manualInput ->
+                    ( "manual"
+                    , Json.Encode.object
+                        [ ( "offsetSecond", Json.Encode.int manualInput.offsetSecond ) ]
+                    )
+    in
+    Json.Encode.object
+        [ ( objectName, encoder ) ]
+
+
+stopwatchEncoder : Stopwatch -> Json.Encode.Value
+stopwatchEncoder sw =
+    Json.Encode.object
+        [ ( "id", Json.Encode.int sw.id )
+        , ( "name", Json.Encode.string sw.name )
+        , ( "log", Json.Encode.list logRecordEncoder sw.log.records )
+        ]
+
+
+workingStateEncoder : WorkingState -> Json.Encode.Value
+workingStateEncoder workingState =
+    Json.Encode.object
+        [ ( "stopwatchId", Json.Encode.int workingState.stopwatchId )
+        , ( "startTime", Json.Encode.int (Time.posixToMillis workingState.startTime) )
+        ]
+
+
+modelEncoder : Model -> Json.Encode.Value
+modelEncoder model =
+    Json.Encode.object
+        [ ( "stopwatches", Json.Encode.list stopwatchEncoder model.stopwatches )
+        , ( "workingState", Json.Encode.Extra.maybe workingStateEncoder model.workingState )
+        , ( "currentStopwatchId", Json.Encode.int model.currentStopwatchId )
+
+        -- currentTimeは不要
+        ]
+
+
 logRecordToString : LogRecord -> String
 logRecordToString logRecord =
     case logRecord of
@@ -77,20 +161,10 @@ logRecordToElapsedMillis logRecord =
             manualInput.offsetSecond * 1000
 
 
-type alias NormalLogRecord =
-    { startTime : Time.Posix
-    , endTime : Time.Posix
-    , elapsedMillis : Int
-    }
-
-
-type alias ManualInput =
-    { offsetSecond : Int }
-
-
 setLogRecords : List LogRecord -> Log -> Log
 setLogRecords records log =
     { log | records = records }
+
 
 setLogInput : Maybe String -> Log -> Log
 setLogInput strMaybe log =
@@ -110,20 +184,6 @@ defaultStopwatch id =
         { records = []
         , input = Nothing
         }
-    }
-
-
-type alias WorkingState =
-    { stopwatchId : StopwatchId
-    , startTime : Time.Posix
-    }
-
-
-type alias Model =
-    { stopwatches : List Stopwatch
-    , workingState : Maybe WorkingState
-    , currentStopwatchId : StopwatchId
-    , currentTime : Maybe Time.Posix
     }
 
 
@@ -306,7 +366,8 @@ update msg model =
 
         InputTime stopwatchId str ->
             let
-                targetStopwatchMaybe = getStopwatchById stopwatchId model
+                targetStopwatchMaybe =
+                    getStopwatchById stopwatchId model
 
                 nextModel =
                     targetStopwatchMaybe
@@ -325,14 +386,16 @@ update msg model =
 
         ApplyManualInput stopwatchId ->
             let
-                _ = Debug.log <| "ApplyManualInput" ++ String.fromInt stopwatchId
-                targetStopwatchMaybe = getStopwatchById stopwatchId model
+                _ =
+                    Debug.log <| "ApplyManualInput" ++ String.fromInt stopwatchId
+
+                targetStopwatchMaybe =
+                    getStopwatchById stopwatchId model
 
                 offsetSecMaybe =
                     targetStopwatchMaybe
                         |> Maybe.andThen (.log >> .input)
                         |> Maybe.andThen String.toInt
-
 
                 nextModel =
                     offsetSecMaybe
@@ -344,7 +407,8 @@ update msg model =
                                     (\sw -> sw.id == stopwatchId)
                                     (\sw ->
                                         let
-                                            log = setLogRecords (manualInput :: sw.log.records) sw.log
+                                            log =
+                                                setLogRecords (manualInput :: sw.log.records) sw.log
                                         in
                                         { sw | log = log }
                                     )
@@ -356,7 +420,7 @@ update msg model =
                                     (\sw -> sw.id == stopwatchId)
                                     (\sw -> { sw | log = setLogInput Nothing sw.log })
                                     m
-                            )
+                           )
             in
             ( nextModel, Cmd.none )
 
