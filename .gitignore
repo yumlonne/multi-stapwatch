@@ -72,4 +72,4 @@ repl-temp-*
 # .swp
 *.swp
 
-index.html
+elm.js

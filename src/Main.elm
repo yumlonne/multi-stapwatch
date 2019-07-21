@@ -1,4 +1,4 @@
-port module Main exposing (Hour, Log, LogRecord(..), ManualInput, Minute, Model, Msg(..), NormalLogRecord, Second, Stopwatch, StopwatchId, WorkingState, centerEL, defaultStopwatch, getCurrentTime, getElapsedSecond, getStopwatchById, init, isWorking, logRecordDecoder, logRecordEncoder, logRecordToElapsedMillis, logRecordToString, main, manualInputLogView, modelDecoder, modelEncoder, normalButtonSize, setLogInput, setLogRecords, startBGColor, stopBGColor, stopwatchDecoder, stopwatchEncoder, subscriptions, timeDiffMillis, timeDiffSecond, to2digit, toTimeFormat, toTimeString, update, updateStart, updateStop, updateStopwatchByCond, view, workingStateDecoder, workingStateEncoder)
+port module Main exposing (main)
 
 import Browser exposing (Document)
 import Browser.Events
@@ -290,15 +290,22 @@ type alias Second =
     Int
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { stopwatches = []
-      , workingState = Nothing
-      , currentStopwatchId = 1
-      , currentTime = Nothing
-      }
-    , Cmd.none
-    )
+init : Json.Decode.Value -> ( Model, Cmd Msg )
+init jsonValue =
+    case Json.Decode.decodeValue modelDecoder jsonValue of
+        Ok model ->
+            ( model
+            , Cmd.none
+            )
+
+        Err model ->
+            ( { stopwatches = []
+              , workingState = Nothing
+              , currentStopwatchId = 1
+              , currentTime = Nothing
+              }
+            , Cmd.none
+            )
 
 
 
@@ -335,14 +342,14 @@ update msg model =
 
         AddStopwatch ->
             let
-                _ =
-                    Debug.log (Json.Encode.encode 0 (modelEncoder model)) ()
+                newModel =
+                    { model
+                        | stopwatches = model.stopwatches ++ [ defaultStopwatch model.currentStopwatchId ]
+                        , currentStopwatchId = model.currentStopwatchId + 1
+                    }
             in
-            ( { model
-                | stopwatches = model.stopwatches ++ [ defaultStopwatch model.currentStopwatchId ]
-                , currentStopwatchId = model.currentStopwatchId + 1
-              }
-            , Cmd.none
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         RemoveStopwatch stopwatchId ->
@@ -356,9 +363,12 @@ update msg model =
 
                 nextStopwatches =
                     List.filter (\sw -> sw.id /= stopwatchId) model.stopwatches
+
+                newModel =
+                    { model | workingState = nextWorkingState, stopwatches = nextStopwatches }
             in
-            ( { model | workingState = nextWorkingState, stopwatches = nextStopwatches }
-            , Cmd.none
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         -- 動いているのがあれば止めてからstartする
@@ -370,44 +380,59 @@ update msg model =
                 startedModel =
                     updateStart stoppedModel stopwatchId
             in
-            ( startedModel, Cmd.none )
+            ( startedModel
+            , saveModel <| modelEncoder startedModel
+            )
 
         -- 該当stopwatchが動いてれば止める
         Stop stopwatchId ->
-            ( updateStop model stopwatchId, Cmd.none )
+            let
+                newModel =
+                    updateStop model stopwatchId
+            in
+            ( newModel
+            , saveModel <| modelEncoder newModel
+            )
 
         UpdateName stopwatchId name ->
-            ( updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | name = name }) model
-            , Cmd.none
+            let
+                newModel =
+                    updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | name = name }) model
+            in
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         ResetTime stopwatchId ->
             let
-                nextModel =
+                newModel =
                     updateStopwatchByCond (\sw -> sw.id == stopwatchId) (\sw -> { sw | log = setLogRecords [] sw.log }) model
             in
             if Maybe.map .stopwatchId model.workingState == Just stopwatchId then
-                ( nextModel
+                ( newModel
                 , Task.perform UpdateStartTime getCurrentTime
                 )
 
             else
-                ( nextModel
-                , Cmd.none
+                ( newModel
+                , saveModel <| modelEncoder newModel
                 )
 
         UpdateStartTime time ->
             let
                 updateStartTime workingState =
                     { workingState | startTime = time }
+
+                newModel =
+                    { model | workingState = Maybe.map updateStartTime model.workingState }
             in
-            ( { model | workingState = Maybe.map updateStartTime model.workingState }
-            , Cmd.none
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         ShowInputLog stopwatchId ->
             let
-                nextStopwatch =
+                newStopwatch =
                     case getStopwatchById stopwatchId model of
                         Just sw ->
                             let
@@ -419,13 +444,13 @@ update msg model =
                         Nothing ->
                             Nothing
 
-                nextModel =
-                    nextStopwatch
+                newModel =
+                    newStopwatch
                         |> Maybe.map (\sw -> updateStopwatchByCond (\s -> s.id == stopwatchId) (always sw) model)
                         |> Maybe.withDefault model
             in
-            ( nextModel
-            , Cmd.none
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         InputTime stopwatchId str ->
@@ -433,7 +458,7 @@ update msg model =
                 targetStopwatchMaybe =
                     getStopwatchById stopwatchId model
 
-                nextModel =
+                newModel =
                     targetStopwatchMaybe
                         |> Maybe.map
                             (\stopwatch ->
@@ -444,15 +469,12 @@ update msg model =
                             )
                         |> Maybe.withDefault model
             in
-            ( nextModel
-            , Cmd.none
+            ( newModel
+            , saveModel <| modelEncoder newModel
             )
 
         ApplyManualInput stopwatchId ->
             let
-                _ =
-                    Debug.log <| "ApplyManualInput" ++ String.fromInt stopwatchId
-
                 targetStopwatchMaybe =
                     getStopwatchById stopwatchId model
 
@@ -461,7 +483,7 @@ update msg model =
                         |> Maybe.andThen (.log >> .input)
                         |> Maybe.andThen String.toInt
 
-                nextModel =
+                newModel =
                     offsetSecMaybe
                         |> Maybe.map (\offset -> ManualInput offset)
                         |> Maybe.map Manual
@@ -486,7 +508,9 @@ update msg model =
                                     m
                            )
             in
-            ( nextModel, Cmd.none )
+            ( newModel
+            , saveModel <| modelEncoder newModel
+            )
 
 
 updateStart : Model -> StopwatchId -> Model
@@ -573,6 +597,9 @@ subscriptions model =
 getCurrentTime : Task Never Time.Posix
 getCurrentTime =
     Time.now
+
+
+port saveModel : Json.Encode.Value -> Cmd msg
 
 
 
