@@ -1,4 +1,4 @@
-port module Main exposing (main)
+port module Main exposing (Hour, Log, LogRecord(..), ManualInput, Minute, Model, Msg(..), NormalLogRecord, Second, Stopwatch, StopwatchId, WorkingState, centerEL, defaultStopwatch, getCurrentTime, getElapsedSecond, getStopwatchById, init, isWorking, logRecordDecoder, logRecordEncoder, logRecordToElapsedMillis, logRecordToString, main, manualInputLogView, modelDecoder, modelEncoder, normalButtonSize, setLogInput, setLogRecords, startBGColor, stopBGColor, stopwatchDecoder, stopwatchEncoder, subscriptions, timeDiffMillis, timeDiffSecond, to2digit, toTimeFormat, toTimeString, update, updateStart, updateStop, updateStopwatchByCond, view, workingStateDecoder, workingStateEncoder)
 
 import Browser exposing (Document)
 import Browser.Events
@@ -10,6 +10,8 @@ import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
 import Json.Decode
+import Json.Decode.Extra
+import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode
 import Json.Encode.Extra
 import List.Extra exposing (..)
@@ -86,7 +88,7 @@ type alias Model =
 
 
 
--- ENCODERS
+-- ENCODERS, DECODERS
 
 
 logRecordEncoder : LogRecord -> Json.Encode.Value
@@ -110,7 +112,37 @@ logRecordEncoder logRecord =
                     )
     in
     Json.Encode.object
-        [ ( objectName, encoder ) ]
+        [ ( "type", Json.Encode.string objectName )
+        , ( "record", encoder )
+        ]
+
+
+logRecordDecoder : Json.Decode.Decoder LogRecord
+logRecordDecoder =
+    Json.Decode.field "type" Json.Decode.string
+        |> Json.Decode.andThen
+            (\recordType ->
+                if recordType == "normal" then
+                    Json.Decode.map Normal
+                        (Json.Decode.field "record"
+                            (Json.Decode.succeed NormalLogRecord
+                                |> required "startTime" (Json.Decode.map Time.millisToPosix Json.Decode.int)
+                                |> required "endTime" (Json.Decode.map Time.millisToPosix Json.Decode.int)
+                                |> required "elapsedMillis" Json.Decode.int
+                            )
+                        )
+
+                else if recordType == "manual" then
+                    Json.Decode.map Manual
+                        (Json.Decode.field "record"
+                            (Json.Decode.succeed ManualInput
+                                |> Json.Decode.Pipeline.required "offsetSecond" Json.Decode.int
+                            )
+                        )
+
+                else
+                    Json.Decode.fail <| "Illegal LogRecord type `" ++ recordType ++ "`"
+            )
 
 
 stopwatchEncoder : Stopwatch -> Json.Encode.Value
@@ -122,12 +154,31 @@ stopwatchEncoder sw =
         ]
 
 
+stopwatchDecoder : Json.Decode.Decoder Stopwatch
+stopwatchDecoder =
+    Json.Decode.succeed Stopwatch
+        |> required "id" Json.Decode.int
+        |> required "name" Json.Decode.string
+        |> required "log"
+            (Json.Decode.map
+                (\logs -> { records = logs, input = Nothing })
+                (Json.Decode.list logRecordDecoder)
+            )
+
+
 workingStateEncoder : WorkingState -> Json.Encode.Value
 workingStateEncoder workingState =
     Json.Encode.object
         [ ( "stopwatchId", Json.Encode.int workingState.stopwatchId )
         , ( "startTime", Json.Encode.int (Time.posixToMillis workingState.startTime) )
         ]
+
+
+workingStateDecoder : Json.Decode.Decoder WorkingState
+workingStateDecoder =
+    Json.Decode.succeed WorkingState
+        |> required "stopwatchId" Json.Decode.int
+        |> required "startTime" (Json.Decode.map Time.millisToPosix Json.Decode.int)
 
 
 modelEncoder : Model -> Json.Encode.Value
@@ -139,6 +190,15 @@ modelEncoder model =
 
         -- currentTimeは不要
         ]
+
+
+modelDecoder : Json.Decode.Decoder Model
+modelDecoder =
+    Json.Decode.succeed Model
+        |> required "stopwatches" (Json.Decode.list stopwatchDecoder)
+        |> required "workingState" (Json.Decode.maybe workingStateDecoder)
+        |> required "currentStopwatchId" Json.Decode.int
+        |> optional "currentTime" (Json.Decode.maybe (Json.Decode.map Time.millisToPosix Json.Decode.int)) Nothing
 
 
 logRecordToString : LogRecord -> String
@@ -274,6 +334,10 @@ update msg model =
             )
 
         AddStopwatch ->
+            let
+                _ =
+                    Debug.log (Json.Encode.encode 0 (modelEncoder model)) ()
+            in
             ( { model
                 | stopwatches = model.stopwatches ++ [ defaultStopwatch model.currentStopwatchId ]
                 , currentStopwatchId = model.currentStopwatchId + 1
